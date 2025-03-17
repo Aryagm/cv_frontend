@@ -87,8 +87,7 @@ const App = () => {
     }
   
     const commands = {
-      // Modified commands to work within sentences
-      '* start *': () => {
+      '*start*': () => {
         startCamera();
         if (audioEnabled) {
           const startMsg = new SpeechSynthesisUtterance('Starting camera');
@@ -97,10 +96,7 @@ const App = () => {
         }
         setListeningStatus('Command detected: "start"');
       },
-      'start *': () => startCamera(),
-      '* start': () => startCamera(),
-      
-      '* stop *': () => {
+      '*stop*': () => {
         stopCamera();
         if (audioEnabled) {
           const stopMsg = new SpeechSynthesisUtterance('Stopping camera');
@@ -109,44 +105,30 @@ const App = () => {
         }
         setListeningStatus('Command detected: "stop"');
       },
-      'stop *': () => stopCamera(),
-      '* stop': () => stopCamera(),
-      
-      '* disable sidewalk *': () => {
+      '*disable sidewalk*': () => {
         if (sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "disable sidewalk"');
       },
-      'disable sidewalk *': () => { if (sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      '* disable sidewalk': () => { if (sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      
-      '* turn off sidewalk *': () => {
-        if (sidewalkAlertsEnabled) {
-          toggleSidewalkAlerts();
-        }
-        setListeningStatus('Command detected: "turn off sidewalk"');
-      },
-      'turn off sidewalk *': () => { if (sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      '* turn off sidewalk': () => { if (sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      
-      '* enable sidewalk *': () => {
+      '*enable sidewalk*': () => {
         if (!sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "enable sidewalk"');
       },
-      'enable sidewalk *': () => { if (!sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      '* enable sidewalk': () => { if (!sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      
-      '* turn on sidewalk *': () => {
+      '*turn off sidewalk*': () => {
+        if (sidewalkAlertsEnabled) {
+          toggleSidewalkAlerts();
+        }
+        setListeningStatus('Command detected: "turn off sidewalk"');
+      },
+      '*turn on sidewalk*': () => {
         if (!sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "turn on sidewalk"');
-      },
-      'turn on sidewalk *': () => { if (!sidewalkAlertsEnabled) toggleSidewalkAlerts(); },
-      '* turn on sidewalk': () => { if (!sidewalkAlertsEnabled) toggleSidewalkAlerts(); }
+      }
     };
 
     // Add commands to annyang
