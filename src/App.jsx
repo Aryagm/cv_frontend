@@ -51,12 +51,6 @@ const App = () => {
     }
   };
 
-  const resetStatusAfterDelay = () => {
-    setTimeout(() => {
-      setListeningStatus('Listening for voice commands...');
-    }, 3000);
-  };
-
   // Check if vibration is supported by the device
   const isVibrationSupported = () => {
     return "vibrate" in navigator;
@@ -101,7 +95,6 @@ const App = () => {
           window.speechSynthesis.speak(startMsg);
         }
         setListeningStatus('Command detected: "start"');
-        resetStatusAfterDelay();
       },
       'stop': () => {
         stopCamera();
@@ -111,35 +104,30 @@ const App = () => {
           window.speechSynthesis.speak(stopMsg);
         }
         setListeningStatus('Command detected: "stop"');
-        resetStatusAfterDelay();
       },
       'disable sidewalk': () => {
         if (sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "disable sidewalk"');
-        resetStatusAfterDelay();
       },
       'turn off sidewalk': () => {
         if (sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "turn off sidewalk"');
-        resetStatusAfterDelay();
       },
       'enable sidewalk': () => {
         if (!sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "enable sidewalk"');
-        resetStatusAfterDelay();
       },
       'turn on sidewalk': () => {
         if (!sidewalkAlertsEnabled) {
           toggleSidewalkAlerts();
         }
         setListeningStatus('Command detected: "turn on sidewalk"');
-        resetStatusAfterDelay();
       }
     };
 
