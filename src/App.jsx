@@ -51,6 +51,12 @@ const App = () => {
     }
   };
 
+  const resetStatusAfterDelay = () => {
+    setTimeout(() => {
+      setListeningStatus('Listening for voice commands...');
+    }, 3000);
+  };
+
   // Check if vibration is supported by the device
   const isVibrationSupported = () => {
     return "vibrate" in navigator;
@@ -165,6 +171,15 @@ const App = () => {
     // Start listening
     annyang.start({ autoRestart: true, continuous: true });
     setVoiceActivated(true);
+  };
+
+  const stopVoiceRecognition = () => {
+    if (annyang) {
+      annyang.abort();
+      annyang.removeAllCallbacks();
+      setVoiceActivated(false);
+      setListeningStatus('Voice control disabled');
+    }
   };
 
   const startCamera = () => {
