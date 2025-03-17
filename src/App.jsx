@@ -216,7 +216,7 @@ const App = () => {
           // Compress image before sending
           const compressedImage = await compressImage(imageSrc);
           
-          const response = await fetch('https://o5ejhs-ip-34-133-109-217.tunnelmole.net/process_frame/', {
+          const response = await fetch('https://vbl1yi-ip-34-133-109-217.tunnelmole.net/process_frame/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
