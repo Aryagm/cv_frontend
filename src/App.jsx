@@ -436,9 +436,9 @@ const App = () => {
           <div style={{...statusIndicatorStyle, backgroundColor: '#2196F3'}}>
             Frame Rate: {frameRate.toFixed(1)} fps
           </div>
-          <div style={{...statusIndicatorStyle, backgroundColor: '#9C27B0'}}>
+          {/* <div style={{...statusIndicatorStyle, backgroundColor: '#9C27B0'}}>
             Processing: {processingTime}ms
-          </div>
+          </div> */}
         </div>
       </header>
       
