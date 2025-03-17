@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
+import annyang from 'annyang';
 
 const App = () => {
   const webcamRef = useRef(null);
@@ -13,11 +14,15 @@ const App = () => {
   const recognitionRef = useRef(null);
   const [sidewalkAlertsEnabled, setSidewalkAlertsEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingTime, setProcessingTime] = useState(0);
+  const [frameRate, setFrameRate] = useState(0);
+  const frameTimeRef = useRef([]);
+  const processNextFrameRef = useRef(null);
   
   // Performance configuration variables
   const processingInterval = 300; // 1 second between frame captures
-  const imageQuality = 0.8; // JPEG quality (0-1)
-  const maxImageWidth = 1200; // Maximum width for processed images
+  const imageQuality = 0.5; // JPEG quality (0-1)
+  const maxImageWidth = 640; // Maximum width for processed images
   
   // Refs for performance optimization
   const lastUtteranceRef = useRef(Date.now());
@@ -76,133 +81,90 @@ const App = () => {
 
   const startVoiceRecognition = () => {
     // Check if the browser supports speech recognition
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!annyang) {
       alert("Your browser doesn't support speech recognition. Try Chrome or Edge.");
       return;
     }
   
-    // Initialize speech recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = true;
-    recognition.interimResults = true; // Enable interim results for faster response
-    recognition.lang = 'en-US';
-    
-    recognition.onstart = () => {
+    const commands = {
+      'start': () => {
+        startCamera();
+        if (audioEnabled) {
+          const startMsg = new SpeechSynthesisUtterance('Starting camera');
+          startMsg.rate = 1.2;
+          window.speechSynthesis.speak(startMsg);
+        }
+        setListeningStatus('Command detected: "start"');
+        resetStatusAfterDelay();
+      },
+      'stop': () => {
+        stopCamera();
+        if (audioEnabled) {
+          const stopMsg = new SpeechSynthesisUtterance('Stopping camera');
+          stopMsg.rate = 1.2;
+          window.speechSynthesis.speak(stopMsg);
+        }
+        setListeningStatus('Command detected: "stop"');
+        resetStatusAfterDelay();
+      },
+      'disable sidewalk': () => {
+        if (sidewalkAlertsEnabled) {
+          toggleSidewalkAlerts();
+        }
+        setListeningStatus('Command detected: "disable sidewalk"');
+        resetStatusAfterDelay();
+      },
+      'turn off sidewalk': () => {
+        if (sidewalkAlertsEnabled) {
+          toggleSidewalkAlerts();
+        }
+        setListeningStatus('Command detected: "turn off sidewalk"');
+        resetStatusAfterDelay();
+      },
+      'enable sidewalk': () => {
+        if (!sidewalkAlertsEnabled) {
+          toggleSidewalkAlerts();
+        }
+        setListeningStatus('Command detected: "enable sidewalk"');
+        resetStatusAfterDelay();
+      },
+      'turn on sidewalk': () => {
+        if (!sidewalkAlertsEnabled) {
+          toggleSidewalkAlerts();
+        }
+        setListeningStatus('Command detected: "turn on sidewalk"');
+        resetStatusAfterDelay();
+      }
+    };
+
+    // Add commands to annyang
+    annyang.addCommands(commands);
+
+    // Set language
+    annyang.setLanguage('en-US');
+
+    // Add callbacks
+    annyang.addCallback('start', () => {
       setListeningStatus('Listening for voice commands...');
       console.log('Voice recognition started');
-    };
-    
-    recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript.trim().toLowerCase();
-        const isFinal = event.results[i].isFinal;      
-        // Fixed syntax error by removing the stray 'x'
-        
-        console.log(`Heard${isFinal ? ' (final)' : ' (interim)'}: ${transcript} (Confidence: ${event.results[i][0].confidence.toFixed(2)})`);
+    });
 
-        setListeningStatus(`Current Detection: "${transcript}"`);
-        // Process command if confidence is reasonable or result is final
-        if ((isFinal || event.results[i][0].confidence > 0.5) && 
-            (transcript.includes('start') || transcript.includes('stop') || transcript.includes('enable') || transcript.includes('disable'))) {
-          
-          // Visual feedback that command was heard
-          setListeningStatus(`Command detected: "${transcript}"`);
-          
-          if (transcript.includes('start')) {
-            startCamera();
-            if (audioEnabled) {
-              const startMsg = new SpeechSynthesisUtterance('Starting camera');
-              startMsg.rate = 1.2; // Slightly faster speech
-              window.speechSynthesis.speak(startMsg);
-            }
-          } 
-          else if (transcript.includes('stop')) {
-            stopCamera();
-            if (audioEnabled) {
-              const stopMsg = new SpeechSynthesisUtterance('Stopping camera');
-              stopMsg.rate = 1.2; // Slightly faster speech
-              window.speechSynthesis.speak(stopMsg);
-            }
-          }
-          else if (transcript.includes('disable') || transcript.includes('turn off sidewalk')) {
-            if (sidewalkAlertsEnabled) {
-              toggleSidewalkAlerts();
-            }
-          }
-          else if (transcript.includes('enable') || transcript.includes('turn on sidewalk')) {
-            if (!sidewalkAlertsEnabled) {
-              toggleSidewalkAlerts();
-            }
-          }
-          
-          // Reset status after a short delay
-          setTimeout(() => {
-            if (voiceActivated) {
-              setListeningStatus('Listening for voice commands...');
-            }
-          }, 2000);
-          
-          break; // Process only one command at a time
-        }
-      }
-    };
-    
-    // Other voice recognition handlers remain the same
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setListeningStatus('Voice recognition error: ' + event.error);
-      
-      // Auto-restart on error after a short delay
-      if (event.error === 'network' || event.error === 'no-speech') {
-        setTimeout(() => {
-          if (voiceActivated && recognitionRef.current) {
-            try {
-              recognitionRef.current.start();
-            } catch (e) {
-              console.log("Couldn't restart recognition:", e);
-            }
-          }
-        }, 1000);
-      }
-    };
-    
-    recognition.onend = () => {
-      // Restart recognition immediately if voice activation is still enabled
-      if (voiceActivated) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.log("Couldn't restart recognition:", e);
-          // Try again after a short delay
-          setTimeout(() => {
-            if (voiceActivated) {
-              try {
-                recognition.start();
-              } catch (e) {
-                console.log("Still couldn't restart recognition");
-              }
-            }
-          }, 500);
-        }
-      } else {
-        setListeningStatus('');
-      }
-    };
-    
-    recognitionRef.current = recognition;
-    recognition.start();
+    annyang.addCallback('error', (error) => {
+      console.error('Speech recognition error:', error);
+      setListeningStatus('Voice recognition error: ' + error);
+    });
+
+    annyang.addCallback('resultNoMatch', (phrases) => {
+      console.log('Command not recognized:', phrases);
+    });
+
+    annyang.addCallback('resultMatch', (userSaid, commandText, phrases) => {
+      console.log('User said:', userSaid, 'Command matched:', commandText);
+    });
+
+    // Start listening
+    annyang.start({ autoRestart: true, continuous: true });
     setVoiceActivated(true);
-  };
-
-  const stopVoiceRecognition = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    setVoiceActivated(false);
-    setListeningStatus('');
   };
 
   const startCamera = () => {
@@ -245,6 +207,8 @@ const App = () => {
   const captureAndProcess = useCallback(async () => {
     if (webcamRef.current && isCameraActive && !isProcessing) {
       setIsProcessing(true);
+      
+      const startTime = performance.now();
       
       try {
         const imageSrc = webcamRef.current.getScreenshot();
@@ -289,24 +253,40 @@ const App = () => {
       } catch (error) {
         console.error('Error processing frame:', error);
       } finally {
+        // Calculate metrics
+        const endTime = performance.now();
+        const elapsed = endTime - startTime;
+        setProcessingTime(Math.round(elapsed));
+        
+        // Calculate rolling average frame rate
+        frameTimeRef.current.push(elapsed);
+        if (frameTimeRef.current.length > 10) frameTimeRef.current.shift();
+        const avgTime = frameTimeRef.current.reduce((a, b) => a + b, 0) / frameTimeRef.current.length;
+        setFrameRate(Math.round(1000 / avgTime * 10) / 10); // Round to 1 decimal place
+        
         setIsProcessing(false);
+        
+        // Schedule next frame with a small delay (10ms) to give UI thread a chance to breathe
+        if (isCameraActive) {
+          processNextFrameRef.current = setTimeout(captureAndProcess, 10);
+        }
       }
     }
   }, [audioEnabled, compressImage, hapticEnabled, isCameraActive, isProcessing, sidewalkAlertsEnabled]);
 
   useEffect(() => {
-    let intervalId = null;
-    
+    // Start processing when camera becomes active
     if (isCameraActive) {
-      intervalId = setInterval(() => {
-        captureAndProcess();
-      }, processingInterval);
+      captureAndProcess();
     }
     
+    // Clean up function to cancel any pending frame processing
     return () => {
-      if (intervalId) clearInterval(intervalId);
+      if (processNextFrameRef.current) {
+        clearTimeout(processNextFrameRef.current);
+      }
     };
-  }, [captureAndProcess, isCameraActive, processingInterval]);
+  }, [captureAndProcess, isCameraActive]);
 
   // Clean up speech recognition when component unmounts
   useEffect(() => {
@@ -439,7 +419,10 @@ const App = () => {
             Sidewalk Alerts: {sidewalkAlertsEnabled ? 'Enabled' : 'Disabled'}
           </div>
           <div style={{...statusIndicatorStyle, backgroundColor: '#2196F3'}}>
-            Frame Rate: {processingInterval/1000}s
+            Frame Rate: {frameRate.toFixed(1)} fps
+          </div>
+          <div style={{...statusIndicatorStyle, backgroundColor: '#9C27B0'}}>
+            Processing: {processingTime}ms
           </div>
         </div>
       </header>
