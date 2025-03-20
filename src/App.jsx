@@ -20,7 +20,6 @@ const App = () => {
   const processNextFrameRef = useRef(null);
   
   // Performance configuration variables
-  const processingInterval = 300; // 1 second between frame captures
   const imageQuality = 0.5; // JPEG quality (0-1)
   const maxImageWidth = 640; // Maximum width for processed images
   
@@ -87,49 +86,53 @@ const App = () => {
     }
   
     const commands = {
-      '*start*': () => {
+      // Simple, exact commands for better recognition
+      'start': () => {
         startCamera();
-        if (audioEnabled) {
-          const startMsg = new SpeechSynthesisUtterance('Starting camera');
-          startMsg.rate = 1.2;
-          window.speechSynthesis.speak(startMsg);
-        }
+        provideCommandFeedback('Starting camera');
         setListeningStatus('Command detected: "start"');
       },
-      '*stop*': () => {
+      'stop': () => {
         stopCamera();
-        if (audioEnabled) {
-          const stopMsg = new SpeechSynthesisUtterance('Stopping camera');
-          stopMsg.rate = 1.2;
-          window.speechSynthesis.speak(stopMsg);
-        }
+        provideCommandFeedback('Stopping camera');
         setListeningStatus('Command detected: "stop"');
       },
-      '*disable sidewalk*': () => {
-        if (sidewalkAlertsEnabled) {
-          toggleSidewalkAlerts();
-        }
-        setListeningStatus('Command detected: "disable sidewalk"');
-      },
-      '*enable sidewalk*': () => {
-        if (!sidewalkAlertsEnabled) {
-          toggleSidewalkAlerts();
-        }
-        setListeningStatus('Command detected: "enable sidewalk"');
-      },
-      '*turn off sidewalk*': () => {
-        if (sidewalkAlertsEnabled) {
-          toggleSidewalkAlerts();
-        }
-        setListeningStatus('Command detected: "turn off sidewalk"');
-      },
-      '*turn on sidewalk*': () => {
-        if (!sidewalkAlertsEnabled) {
-          toggleSidewalkAlerts();
-        }
-        setListeningStatus('Command detected: "turn on sidewalk"');
-      }
+      // Adding multiple variations for each command
+      'disable sidewalk': handleSidewalkDisable,
+      'disable sidewalk alerts': handleSidewalkDisable,
+      'turn off sidewalk': handleSidewalkDisable,
+      'turn off sidewalk alerts': handleSidewalkDisable,
+      
+      'enable sidewalk': handleSidewalkEnable,
+      'enable sidewalk alerts': handleSidewalkEnable,
+      'turn on sidewalk': handleSidewalkEnable,
+      'turn on sidewalk alerts': handleSidewalkEnable
     };
+
+    // Helper functions for better organization and feedback
+  function handleSidewalkDisable() {
+    if (sidewalkAlertsEnabled) {
+      toggleSidewalkAlerts();
+    }
+    setListeningStatus('Command detected: "disable sidewalk"');
+  }
+  
+  function handleSidewalkEnable() {
+    if (!sidewalkAlertsEnabled) {
+      toggleSidewalkAlerts();
+    }
+    setListeningStatus('Command detected: "enable sidewalk"');
+  }
+  
+  function provideCommandFeedback(message) {
+    if (audioEnabled) {
+      const msg = new SpeechSynthesisUtterance(message);
+      msg.rate = 1.2;
+      window.speechSynthesis.speak(msg);
+    }
+    // Visual feedback
+    setListeningStatus(`Executing: ${message}`);
+  }
 
     // Add commands to annyang
     annyang.addCommands(commands);
@@ -149,16 +152,26 @@ const App = () => {
     });
 
     annyang.addCallback('resultNoMatch', (phrases) => {
-      console.log('Command not recognized:', phrases);
+      console.log('Command not recognized. Heard:', phrases);
+      setListeningStatus('Not recognized: ' + phrases[0]);
+      // Reset status after 2 seconds
+      setTimeout(() => setListeningStatus('Listening for voice commands...'), 2000);
     });
 
     annyang.addCallback('resultMatch', (userSaid, commandText, phrases) => {
       console.log('User said:', userSaid, 'Command matched:', commandText);
+      // Visual feedback that command was recognized
+      setListeningStatus(`Recognized: "${userSaid}"`);
     });
 
     // Start listening
-    annyang.start({ autoRestart: true, continuous: true });
-    setVoiceActivated(true);
+    // Start listening with improved settings
+  annyang.start({ 
+    autoRestart: true, 
+    continuous: true,
+    paused: false
+  });
+  setVoiceActivated(true);
   };
 
   const stopVoiceRecognition = () => {
@@ -219,7 +232,7 @@ const App = () => {
           // Compress image before sending
           const compressedImage = await compressImage(imageSrc);
           
-          const response = await fetch('https://gzcy1d-ip-34-133-109-217.tunnelmole.net/process_frame/', {
+          const response = await fetch('https://8ectlh-ip-34-133-109-217.tunnelmole.net/process_frame/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -408,11 +421,30 @@ const App = () => {
         </div>
 
         {voiceActivated && (
-          <div style={{ marginTop: '10px' }}>
-            <p style={{ fontStyle: 'italic' }}>{listeningStatus}</p>
-            <p>Voice commands: <strong>"Start"</strong>, <strong>"Stop"</strong>, <strong>"Enable sidewalk"</strong>, <strong>"Disable sidewalk"</strong></p>
-          </div>
-        )}
+  <div style={{ marginTop: '10px' }}>
+    <div style={{
+      display: 'inline-block',
+      width: '12px',
+      height: '12px',
+      backgroundColor: '#4CAF50',
+      borderRadius: '50%',
+      marginRight: '8px',
+      animation: 'pulse 1.5s infinite'
+    }}></div>
+    <p style={{ fontStyle: 'italic', display: 'inline' }}>{listeningStatus}</p>
+    <p>Voice commands: <strong>"Start"</strong>, <strong>"Stop"</strong>, <strong>"Enable sidewalk"</strong>, <strong>"Disable sidewalk"</strong></p>
+    
+    <style>
+      {`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.3; }
+          100% { opacity: 1; }
+        }
+      `}
+    </style>
+  </div>
+)}
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
           <div style={statusIndicatorStyle}>
